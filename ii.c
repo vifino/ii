@@ -19,8 +19,8 @@
 #include <time.h>
 #include <unistd.h>
 
-#ifndef PIPE_BUF /* FreeBSD don't know PIPE_BUF */
-#define PIPE_BUF 4096
+#ifndef PIPE_BUF /* For OS that doesn't includes PIPE_BUF in limits.h, FreeBSD? */
+#define PIPE_BUF _POSIX_PIPE_BUF
 #endif
 #define PING_TIMEOUT 300
 #define SERVER_PORT 6667
