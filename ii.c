@@ -38,6 +38,7 @@ static time_t last_response;
 static Channel *channels = NULL;
 static char *host = "irc.freenode.net";
 static char nick[32];			/* might change while running */
+static char _nick[32];			/* might change while running */
 static char path[_POSIX_PATH_MAX];
 static char message[PIPE_BUF]; /* message buf used for communication */
 
@@ -261,7 +262,7 @@ static void proc_channels_input(Channel *c, char *buf) {
 			break;
 		case 'n':
 			if(strlen(buf)>=3){
-				snprintf(nick, sizeof(nick),"%s", &buf[3]);
+				snprintf(_nick, sizeof(nick),"%s", &buf[3]);
 				snprintf(message, PIPE_BUF, "NICK %s\r\n", &buf[3]);
 			}
 			break;
@@ -357,7 +358,11 @@ static void proc_server_cmd(char *buf) {
 		snprintf(message, PIPE_BUF, "-!- %s changed mode/%s -> %s %s", argv[TOK_NICKSRV], argv[TOK_CMD + 1] ? argv[TOK_CMD + 1] : "" , argv[TOK_CMD + 2]? argv[TOK_CMD + 2] : "", argv[TOK_CMD + 3] ? argv[TOK_CMD + 3] : "");
 	else if(!strncmp("QUIT", argv[TOK_CMD], 5))
 		snprintf(message, PIPE_BUF, "-!- %s(%s) has quit \"%s\"", argv[TOK_NICKSRV], argv[TOK_USER], argv[TOK_TEXT] ? argv[TOK_TEXT] : "");
-	else if(!strncmp("NICK", argv[TOK_CMD], 5))
+	else if(!strncmp("NICK", argv[TOK_CMD], 5) && !strcmp(_nick, argv[TOK_TEXT])) {
+		snprintf(nick, sizeof(nick), "%s", _nick);
+		snprintf(message, PIPE_BUF, "-!- changed nick to \"%s\"", nick);
+		print_out(NULL, message);
+	} else if(!strncmp("NICK", argv[TOK_CMD], 5))
 		snprintf(message, PIPE_BUF, "-!- %s changed nick to %s", argv[TOK_NICKSRV], argv[TOK_TEXT]);
 	else if(!strncmp("TOPIC", argv[TOK_CMD], 6))
 		snprintf(message, PIPE_BUF, "-!- %s changed topic to \"%s\"", argv[TOK_NICKSRV], argv[TOK_TEXT] ? argv[TOK_TEXT] : "");
