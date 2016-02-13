@@ -348,30 +348,33 @@ static void proc_server_cmd(char *buf) {
 		return;
 	} else if(!strncmp("ERROR", argv[TOK_CMD], 6))
 		snprintf(message, PIPE_BUF, "-!- error %s", argv[TOK_TEXT] ? argv[TOK_TEXT] : "unknown");
-	else if(!strncmp("JOIN", argv[TOK_CMD], 5)) {
+	else if(!strncmp("JOIN", argv[TOK_CMD], 5) && (argv[TOK_CHAN] || argv[TOK_TEXT])) {
 		if (argv[TOK_TEXT] != NULL)
 			argv[TOK_CHAN] = argv[TOK_TEXT];
 		snprintf(message, PIPE_BUF, "-!- %s(%s) has joined %s", argv[TOK_NICKSRV], argv[TOK_USER], argv[TOK_CHAN]);
-	} else if(!strncmp("PART", argv[TOK_CMD], 5)) {
+	} else if(!strncmp("PART", argv[TOK_CMD], 5) && argv[TOK_CHAN]) {
 		snprintf(message, PIPE_BUF, "-!- %s(%s) has left %s", argv[TOK_NICKSRV], argv[TOK_USER], argv[TOK_CHAN]);
 	} else if(!strncmp("MODE", argv[TOK_CMD], 5))
 		snprintf(message, PIPE_BUF, "-!- %s changed mode/%s -> %s %s", argv[TOK_NICKSRV], argv[TOK_CMD + 1] ? argv[TOK_CMD + 1] : "" , argv[TOK_CMD + 2]? argv[TOK_CMD + 2] : "", argv[TOK_CMD + 3] ? argv[TOK_CMD + 3] : "");
 	else if(!strncmp("QUIT", argv[TOK_CMD], 5))
 		snprintf(message, PIPE_BUF, "-!- %s(%s) has quit \"%s\"", argv[TOK_NICKSRV], argv[TOK_USER], argv[TOK_TEXT] ? argv[TOK_TEXT] : "");
-	else if(!strncmp("NICK", argv[TOK_CMD], 5) && !strcmp(_nick, argv[TOK_TEXT])) {
+	else if(!strncmp("NICK", argv[TOK_CMD], 5) && argv[TOK_TEXT] && !strcmp(_nick, argv[TOK_TEXT])) {
 		snprintf(nick, sizeof(nick), "%s", _nick);
 		snprintf(message, PIPE_BUF, "-!- changed nick to \"%s\"", nick);
 		print_out(NULL, message);
-	} else if(!strncmp("NICK", argv[TOK_CMD], 5))
+	} else if(!strncmp("NICK", argv[TOK_CMD], 5) && argv[TOK_TEXT])
 		snprintf(message, PIPE_BUF, "-!- %s changed nick to %s", argv[TOK_NICKSRV], argv[TOK_TEXT]);
 	else if(!strncmp("TOPIC", argv[TOK_CMD], 6))
 		snprintf(message, PIPE_BUF, "-!- %s changed topic to \"%s\"", argv[TOK_NICKSRV], argv[TOK_TEXT] ? argv[TOK_TEXT] : "");
-	else if(!strncmp("KICK", argv[TOK_CMD], 5))
+	else if(!strncmp("KICK", argv[TOK_CMD], 5) && argv[TOK_ARG])
 		snprintf(message, PIPE_BUF, "-!- %s kicked %s (\"%s\")", argv[TOK_NICKSRV], argv[TOK_ARG], argv[TOK_TEXT] ? argv[TOK_TEXT] : "");
 	else if(!strncmp("NOTICE", argv[TOK_CMD], 7))
 		snprintf(message, PIPE_BUF, "-!- \"%s\")", argv[TOK_TEXT] ? argv[TOK_TEXT] : "");
 	else if(!strncmp("PRIVMSG", argv[TOK_CMD], 8))
 		snprintf(message, PIPE_BUF, "<%s> %s", argv[TOK_NICKSRV], argv[TOK_TEXT] ? argv[TOK_TEXT] : "");
+	else
+		return;	/* can't read this message */
+
 	if(!argv[TOK_CHAN] || !strncmp(argv[TOK_CHAN], nick, strlen(nick)))
 		print_out(argv[TOK_NICKSRV], message);
 	else
