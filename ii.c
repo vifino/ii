@@ -418,7 +418,7 @@ static void handle_server_output() {
 }
 
 static void run() {
-	Channel *c;
+	Channel *c, *n;
 	int r, maxfd;
 	fd_set rd;
 	struct timeval tv;
@@ -455,9 +455,11 @@ static void run() {
 			handle_server_output();
 			last_response = time(NULL);
 		}
-		for(c = channels; c; c = c->next)
+		for(c = channels; c; c = n) {
+			n = c->next;
 			if(FD_ISSET(c->fd, &rd))
 				handle_channels_input(c);
+		}
 	}
 }
 
