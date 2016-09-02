@@ -493,7 +493,7 @@ int main(int argc, char *argv[]) {
 	
 	#ifdef USE_PLEDGE	/* OpenBSD pledge(2) support */
 		if (pledge("stdio rpath wpath cpath dpath", NULL) == -1) {
-			fputs("ii: pledge\\n", stderr);
+			fputs("ii: pledge\n", stderr);
 			exit(EXIT_FAILURE);
 		}
 	#endif
