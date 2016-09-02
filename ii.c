@@ -490,6 +490,14 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	irc = tcpopen(port);
+	
+	#ifdef USE_PLEDGE	/* OpenBSD pledge(2) support */
+		if (pledge("stdio rpath wpath cpath dpath", NULL) == -1) {
+			fputs("ii: pledge\\n", stderr);
+			exit(EXIT_FAILURE);
+		}
+	#endif
+
 	if(!snprintf(path, sizeof(path), "%s/%s", prefix, host)) {
 		fputs("ii: path to irc directory too long\n", stderr);
 		exit(EXIT_FAILURE);

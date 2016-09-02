@@ -25,3 +25,6 @@ LIBS        = -L${LIBDIR} -L/usr/lib -lc
 CC          = cc
 CFLAGS      = -g -O0 -W -Wall ${INCLUDES} -DVERSION=\"${VERSION}\"
 LDFLAGS     = ${LIBS}
+
+# OpenBSD pledge(2) support
+# CFLAGS+= -DUSE_PLEDGE
