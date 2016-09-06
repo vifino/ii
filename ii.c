@@ -491,9 +491,9 @@ int main(int argc, char *argv[]) {
 	}
 	irc = tcpopen(port);
 	
-	#ifdef USE_PLEDGE	/* OpenBSD pledge(2) support */
+	#ifdef __OpenBSD__	/* OpenBSD pledge(2) support */
 		if (pledge("stdio rpath wpath cpath dpath", NULL) == -1) {
-			fputs("ii: pledge\n", stderr);
+			eprint("ii pledge:");
 			exit(EXIT_FAILURE);
 		}
 	#endif
