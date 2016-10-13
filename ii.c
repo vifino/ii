@@ -19,6 +19,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#define EXIT_TIMEOUT 2
+
 #ifndef PIPE_BUF /* For OS that doesn't includes PIPE_BUF in limits.h, FreeBSD? */
 #define PIPE_BUF _POSIX_PIPE_BUF
 #endif
@@ -446,7 +448,7 @@ static void run() {
 		} else if(r == 0) {
 			if(time(NULL) - last_response >= PING_TIMEOUT) {
 				print_out(NULL, "-!- ii shutting down: ping timeout");
-				exit(EXIT_FAILURE);
+				exit(EXIT_TIMEOUT);
 			}
 			write(irc, ping_msg, strlen(ping_msg));
 			continue;
