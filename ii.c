@@ -105,6 +105,7 @@ static int open_channel(char *name) {
 	return open(infile, O_RDONLY | O_NONBLOCK, 0);
 }
 
+static void print_out(char *channel, char *buf); // needs to be declared
 static void add_channel(char *cname) {
 	Channel *c;
 	int fd;
@@ -131,6 +132,12 @@ static void add_channel(char *cname) {
 	}
 	c->fd = fd;
 	c->name = strdup(name);
+
+	if(name[0] && !((name[0]=='#')||(name[0]=='&')||(name[0]=='+')||(name[0]=='!'))) {
+		char msg[128];
+		snprintf(msg, sizeof(msg), "-!- %s has joined %s", nick, name);
+		print_out(name, msg);
+	}
 }
 
 static void rm_channel(Channel *c) {
@@ -214,15 +221,10 @@ static void proc_channels_input(Channel *c, char *buf) {
 		case 'j':
 			p = strchr(&buf[3], ' ');
 			if(p) *p = 0;
+			add_channel(&buf[3]);
 			if((buf[3]=='#')||(buf[3]=='&')||(buf[3]=='+')||(buf[3]=='!')){
 				if(p) snprintf(message, PIPE_BUF, "JOIN %s %s\r\n", &buf[3], p + 1); /* password protected channel */
 				else snprintf(message, PIPE_BUF, "JOIN %s\r\n", &buf[3]);
-				add_channel(&buf[3]);
-			}
-			else if(p){
-				add_channel(&buf[3]);
-				proc_channels_privmsg(&buf[3], p + 1);
-				return;
 			}
 			break;
 		case 't':
@@ -359,6 +361,8 @@ static void proc_server_cmd(char *buf) {
 			argv[TOK_CHAN] = argv[TOK_TEXT];
 		snprintf(message, PIPE_BUF, "-!- %s(%s) has joined %s", argv[TOK_NICKSRV], argv[TOK_USER], argv[TOK_CHAN]);
 	} else if(!strncmp("PART", argv[TOK_CMD], 5) && argv[TOK_CHAN]) {
+		if (!strcmp(nick, argv[TOK_NICKSRV]))
+			return;
 		snprintf(message, PIPE_BUF, "-!- %s(%s) has left %s", argv[TOK_NICKSRV], argv[TOK_USER], argv[TOK_CHAN]);
 	} else if(!strncmp("MODE", argv[TOK_CMD], 5))
 		snprintf(message, PIPE_BUF, "-!- %s changed mode/%s -> %s %s", argv[TOK_NICKSRV], argv[TOK_CMD + 1] ? argv[TOK_CMD + 1] : "" , argv[TOK_CMD + 2]? argv[TOK_CMD + 2] : "", argv[TOK_CMD + 3] ? argv[TOK_CMD + 3] : "");
