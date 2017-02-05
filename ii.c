@@ -259,6 +259,14 @@ static void proc_channels_input(Channel *c, char *buf) {
 			rm_channel(c);
 			return;
 			break;
+		case 'm':
+			if(strlen(buf)>=3) {
+				char newbuf[PIPE_BUF];
+				snprintf(newbuf, PIPE_BUF, "\01ACTION %s\01", &buf[3]);
+				proc_channels_privmsg(c->name, newbuf);
+			}
+			return;
+			break;
 		default:
 			snprintf(message, PIPE_BUF, "%s\r\n", &buf[1]);
 			break;
