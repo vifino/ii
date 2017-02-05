@@ -5,9 +5,7 @@
 #include <netdb.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/socket.h>
 #include <sys/select.h>
-#include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
@@ -18,6 +16,9 @@
 #include <ctype.h>
 #include <time.h>
 #include <unistd.h>
+
+#define READ_FD 6
+#define WRITE_FD 7
 
 #define EXIT_TIMEOUT 2
 
@@ -35,7 +36,6 @@ struct Channel {
 	Channel *next;
 };
 
-static int irc;
 static time_t last_response;
 static Channel *channels = NULL;
 static char *host = "irc.freenode.net";
@@ -151,31 +151,7 @@ static void login(char *key, char *fullname) {
 				nick, nick, host, fullname ? fullname : nick);
 	else snprintf(message, PIPE_BUF, "NICK %s\r\nUSER %s localhost %s :%s\r\n",
 				nick, nick, host, fullname ? fullname : nick);
-	write(irc, message, strlen(message));	/* login */
-}
-
-static int tcpopen(unsigned short port) {
-	int fd;
-	struct sockaddr_in sin;
-	struct hostent *hp = gethostbyname(host);
-
-	memset(&sin, 0, sizeof(struct sockaddr_in));
-	if(!hp) {
-		perror("ii: cannot retrieve host information");
-		exit(EXIT_FAILURE);
-	}
-	sin.sin_family = AF_INET;
-	memcpy(&sin.sin_addr, hp->h_addr, hp->h_length);
-	sin.sin_port = htons(port);
-	if((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-		perror("ii: cannot create socket");
-		exit(EXIT_FAILURE);
-	}
-	if(connect(fd, (const struct sockaddr *) &sin, sizeof(sin)) < 0) {
-		perror("ii: cannot connect to host");
-		exit(EXIT_FAILURE);
-	}
-	return fd;
+	write(WRITE_FD, message, strlen(message));	/* login */
 }
 
 static size_t tokenize(char **result, size_t reslen, char *str, char delim) {
@@ -222,7 +198,7 @@ static void proc_channels_privmsg(char *channel, char *buf) {
 	snprintf(message, PIPE_BUF, "<%s> %s", nick, buf);
 	print_out(channel, message);
 	snprintf(message, PIPE_BUF, "PRIVMSG %s :%s\r\n", channel, buf);
-	write(irc, message, strlen(message));
+	write(WRITE_FD, message, strlen(message));
 }
 
 static void proc_channels_input(Channel *c, char *buf) {
@@ -276,7 +252,7 @@ static void proc_channels_input(Channel *c, char *buf) {
 			else
 				snprintf(message, PIPE_BUF,
 						"PART %s :ii - 500 SLOC are too much\r\n", c->name);
-			write(irc, message, strlen(message));
+			write(WRITE_FD, message, strlen(message));
 			close(c->fd);
 			/*create_filepath(infile, sizeof(infile), c->name, "in");
 			unlink(infile); */
@@ -291,7 +267,7 @@ static void proc_channels_input(Channel *c, char *buf) {
 		snprintf(message, PIPE_BUF, "%s\r\n", &buf[1]);
 
 	if (message[0] != '\0')
-		write(irc, message, strlen(message));
+		write(WRITE_FD, message, strlen(message));
 }
 
 static void proc_server_cmd(char *buf) {
@@ -342,7 +318,7 @@ static void proc_server_cmd(char *buf) {
 		return;
 	} else if(!strncmp("PING", argv[TOK_CMD], 5)) {
 		snprintf(message, PIPE_BUF, "PONG %s\r\n", argv[TOK_TEXT]);
-		write(irc, message, strlen(message));
+		write(WRITE_FD, message, strlen(message));
 		return;
 	} else if(!argv[TOK_NICKSRV] || !argv[TOK_USER]) {	/* server command */
 		snprintf(message, PIPE_BUF, "%s%s", argv[TOK_ARG] ? argv[TOK_ARG] : "", argv[TOK_TEXT] ? argv[TOK_TEXT] : "");
@@ -412,7 +388,7 @@ static void handle_channels_input(Channel *c) {
 
 static void handle_server_output() {
 	static char buf[PIPE_BUF];
-	if(read_line(irc, PIPE_BUF, buf) == -1) {
+	if(read_line(READ_FD, PIPE_BUF, buf) == -1) {
 		perror("ii: remote host closed connection");
 		exit(EXIT_FAILURE);
 	}
@@ -429,8 +405,8 @@ static void run() {
 	snprintf(ping_msg, sizeof(ping_msg), "PING %s\r\n", host);
 	for(;;) {
 		FD_ZERO(&rd);
-		maxfd = irc;
-		FD_SET(irc, &rd);
+		maxfd = READ_FD;
+		FD_SET(READ_FD, &rd);
 		for(c = channels; c; c = c->next) {
 			if(maxfd < c->fd)
 				maxfd = c->fd;
@@ -450,10 +426,10 @@ static void run() {
 				print_out(NULL, "-!- ii shutting down: ping timeout");
 				exit(EXIT_TIMEOUT);
 			}
-			write(irc, ping_msg, strlen(ping_msg));
+			write(WRITE_FD, ping_msg, strlen(ping_msg));
 			continue;
 		}
-		if(FD_ISSET(irc, &rd)) {
+		if(FD_ISSET(READ_FD, &rd)) {
 			handle_server_output();
 			last_response = time(NULL);
 		}
@@ -491,8 +467,7 @@ int main(int argc, char *argv[]) {
 			default: usage(); break;
 		}
 	}
-	irc = tcpopen(port);
-	
+
 	#ifdef __OpenBSD__	/* OpenBSD pledge(2) support */
 		if (pledge("stdio rpath wpath cpath dpath", NULL) == -1) {
 			fprintf(stderr, "ii pledge: %s\n", strerror(errno));
