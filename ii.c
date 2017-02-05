@@ -267,6 +267,26 @@ static void proc_channels_input(Channel *c, char *buf) {
 			}
 			return;
 			break;
+		case 'e':
+			if(strlen(buf)>=3) {
+				char newbuf[PIPE_BUF];
+				FILE *fp;
+				int len;
+
+				if(!(fp = popen(&buf[3], "r"))) {
+					fprintf(stderr, "error running %s\n", &buf[3]);
+					return;
+				}
+				while (fgets(newbuf, sizeof(newbuf), fp)) {
+					len = strlen(newbuf);
+					if (newbuf[len - 1] == '\n')
+						newbuf[len - 1] = '\0';
+					proc_channels_privmsg(c->name, newbuf);
+				}
+				pclose(fp);
+			}
+			return;
+			break;
 		default:
 			snprintf(message, PIPE_BUF, "%s\r\n", &buf[1]);
 			break;
